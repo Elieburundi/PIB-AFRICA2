@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nuage de Points - PIB des Pays d'Afrique</title>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        :root {
+            --africa-blue: #3498db;
+            --africa-green: #2ecc71;
+            --dark: #2c3e50;
+            --light: #f4f6f7;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .main-card {
+            background: white;
+            padding: 35px;
+            border-radius: 18px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+        }
+
+        #title {
+            text-align: center;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-size: 30px;
+        }
+
+        #description {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+
+        svg {
+            overflow: visible;
+        }
+
+        .dot {
+            fill: var(--africa-blue);
+            stroke: white;
+            stroke-width: 2px;
+            transition: 0.3s ease;
+            cursor: pointer;
+        }
+
+        .dot:hover {
+            fill: var(--africa-green);
+            r: 11;
+        }
+
+        .axis path,
+        .axis line {
+            stroke: #bdc3c7;
+        }
+
+        .tick text {
+            font-size: 11px;
+            fill: #555;
+        }
+
+        .axis-label {
+            fill: #555;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .country-label {
+            font-size: 11px;
+            fill: var(--dark);
+            text-anchor: middle;
+        }
+
+        #tooltip {
+            position: absolute;
+            opacity: 0;
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            transition: 0.2s;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="main-card">
+
+        <h1 id="title">PIB des Pays d'Afrique</h1>
+
+        <p id="description">
+            Représentation avec un nuage de points (Scatter Plot)
+        </p>
+
+        <div id="chart"></div>
+
+        <div id="tooltip"></div>
+
+    </div>
+
+    <script>
+
+        // =========================
+        // DONNÉES
+        // =========================
+
+        const data = [
+            { country: "Nigéria", gdp: 477, status: "Émergent" },
+            { country: "Égypte", gdp: 398, status: "Émergent" },
+            { country: "Afrique du Sud", gdp: 373, status: "Émergent" },
+            { country: "Algérie", gdp: 224, status: "En transition" },
+            { country: "Éthiopie", gdp: 156, status: "En développement" },
+            { country: "Maroc", gdp: 147, status: "En transition" },
+            { country: "Kenya", gdp: 112, status: "En transition" },
+            { country: "Angola", gdp: 93, status: "En développement" },
+            { country: "Côte d'Ivoire", gdp: 78, status: "En développement" },
+            { country: "Tanzanie", gdp: 75, status: "En développement" },
+            { country: "Ghana", gdp: 73, status: "En développement" },
+            { country: "RDC", gdp: 67, status: "En développement" },
+            { country: "Tunisie", gdp: 51, status: "En transition" },
+            { country: "Cameroun", gdp: 48, status: "En développement" },
+            { country: "Sénégal", gdp: 31, status: "En développement" }
+        ];
+
+        // =========================
+        // CONFIGURATION
+        // =========================
+
+        const margin = { top: 40, right: 40, bottom: 100, left: 70 };
+
+        const width = 900 - margin.left - margin.right;
+        const height = 550 - margin.top - margin.bottom;
+
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select("#tooltip");
+
+        // =========================
+        // ÉCHELLES
+        // =========================
+
+        const x = d3.scalePoint()
+            .domain(data.map(d => d.country))
+            .range([0, width])
+            .padding(0.5);
+
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.gdp) + 50])
+            .range([height, 0]);
+
+        // =========================
+        // AXE X
+        // =========================
+
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("id", "x-axis")
+            .attr("transform", `translate(0, ${height})`)
+            .call(d3.axisBottom(x))
+            .selectAll("text")
+            .attr("transform", "rotate(-40)")
+            .style("text-anchor", "end");
+
+        // =========================
+        // AXE Y
+        // =========================
+
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("id", "y-axis")
+            .call(d3.axisLeft(y));
+
+        // =========================
+        // LABEL X
+        // =========================
+
+        svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", height + 80)
+            .attr("class", "axis-label")
+            .style("text-anchor", "middle")
+            .text("Pays Africains");
+
+        // =========================
+        // LABEL Y
+        // =========================
+
+        svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("x", -height / 2)
+            .attr("y", -50)
+            .attr("class", "axis-label")
+            .style("text-anchor", "middle")
+            .text("PIB (Milliards USD)");
+
+        // =========================
+        // LIGNES DE GRILLE
+        // =========================
+
+        svg.append("g")
+            .attr("class", "grid")
+            .call(
+                d3.axisLeft(y)
+                    .tickSize(-width)
+                    .tickFormat("")
+            )
+            .selectAll("line")
+            .attr("stroke", "#ecf0f1");
+
+        // =========================
+        // NUAGES DES POINTS
+        // =========================
+
+        svg.selectAll(".dot")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("class", "dot")
+            .attr("cx", d => x(d.country))
+            .attr("cy", d => y(d.gdp))
+            .attr("r", 8)
+
+            // TOOLTIP
+            .on("mouseover", (event, d) => {
+
+                tooltip
+                    .style("opacity", 1)
+                    .html(`
+                        <strong>${d.country}</strong><br>
+                        PIB : ${d.gdp} milliards USD<br>
+                        Statut : 
+                        <span style="color:#2ecc71">
+                            ${d.status}
+                        </span>
+                    `);
+
+            })
+
+            .on("mousemove", (event) => {
+
+                tooltip
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 60) + "px");
+
+            })
+
+            .on("mouseout", () => {
+
+                tooltip.style("opacity", 0);
+
+            });
+
+        // =========================
+        // ÉTIQUETTES AU-DESSUS
+        // =========================
+
+        svg.selectAll(".country-label")
+            .data(data)
+            .enter()
+            .append("text")
+            .attr("class", "country-label")
+            .attr("x", d => x(d.country))
+            .attr("y", d => y(d.gdp) - 15)
+            .text(d => d.gdp);
+
+    </script>
+
+</body>
+</html>
